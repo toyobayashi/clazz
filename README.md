@@ -1,7 +1,3 @@
-# Example Library
+# clazz
 
-``` bash
-$ npm run build
-```
-
-See `package.json` "scripts" field.
+WIP
