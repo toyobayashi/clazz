@@ -19,8 +19,11 @@ import {
   defineMembers,
   canUseWeakMap,
   canUseDestructor,
-  isObject
+  isObject,
+  defineField
 } from './util'
+
+export { defineField }
 
 function noop () {}
 
@@ -39,13 +42,46 @@ function getPrivateFields (options) {
   }
 }
 
-function getConstructor (options, superConstruct, privateFields) {
+function checkPrivateField (privateFields, key) {
+  if (!privateFields[key]) {
+    throw new Error(`Private field '${key}' must be declared in privateFields option`)
+  }
+}
+
+const Context = defineFunction('Context', function Context (privateFields) {
+  defineField(this, 'privateFields', privateFields)
+})
+initializePrototype(Context)
+defineMethods(Context, {
+  getNewTarget (instance) {
+    return Object.getPrototypeOf(instance).constructor
+  },
+  getPublic (instance, key) {
+    return instance[key]
+  },
+  definePublic (instance, key, value) {
+    defineField(instance, key, value)
+    return this
+  },
+  setPublic (instance, key, value) {
+    instance[key] = value
+    return this
+  },
+  getPrivate (instance, key) {
+    checkPrivateField(this.privateFields, key)
+    return this.privateFields[key].get(instance)
+  },
+  setPrivate (instance, key, value) {
+    checkPrivateField(this.privateFields, key)
+    this.privateFields[key].set(instance, value)
+    return this
+  }
+})
+
+function getConstructor (options, superConstruct, context) {
   let ctor
   if (typeof options.makeConstructor === 'function') {
-    ctor = options.makeConstructor({
-      privateFields: privateFields,
-      superConstruct
-    })
+    ctor = options.makeConstructor(context, superConstruct)
     if (typeof ctor !== 'function') {
       throw new TypeError('makeConstructor should return a constructor function')
     }
@@ -94,13 +130,14 @@ export function defineClass (options) {
     'use strict'
 
     const privates = getPrivateFields(options)
+    const ctx = new Context(privates)
 
     let superConstruct
     if (Super) {
       superConstruct = createSuper(Class, Super)
     }
 
-    const ctor = getConstructor(options, superConstruct, privates)
+    const ctor = getConstructor(options, superConstruct, ctx)
     const { registry, getData } = getDestructor(options)
 
     function Class () {
@@ -111,7 +148,7 @@ export function defineClass (options) {
       const _this = ctor.apply(this, arguments) || this
 
       if (registry) {
-        registry.register(_this, getData(_this, privates))
+        registry.register(_this, getData(_this, ctx))
       }
 
       return _this
@@ -123,12 +160,12 @@ export function defineClass (options) {
       initializePrototype(Class)
     }
 
-    defineMembers(Class, defineMethods, options, 'methods', privates)
+    defineMembers(Class, defineMethods, options, 'methods', ctx)
     defineMembers(Class, defineStaticMethods, options, 'staticMethods')
-    defineMembers(Class, defineGetters, options, 'getters', privates)
+    defineMembers(Class, defineGetters, options, 'getters', ctx)
     defineMembers(Class, defineStaticGetters, options, 'staticGetters')
-    defineMembers(Class, defineProtoFields, options, 'protoFields', privates)
-    defineMembers(Class, defineWritableProtoFields, options, 'writableProtoFields', privates)
+    defineMembers(Class, defineProtoFields, options, 'protoFields', ctx)
+    defineMembers(Class, defineWritableProtoFields, options, 'writableProtoFields', ctx)
     defineMembers(Class, defineStaticFields, options, 'staticFields')
 
     return Class

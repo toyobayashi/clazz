@@ -6,28 +6,24 @@ var Deferred = clazz.defineClass({
     '#state'
   ],
   destructor: {
-    data: function (instance, privateFields) {
-      return 1
+    data: function (instance, context) {
+      return context
     },
     handler: function (data) {
       console.log(data)
     }
   },
-  makeConstructor: function (context) {
-    var _methods = context.privateFields['#methods']
-    var _state = context.privateFields['#state']
-    var _super = context.superConstruct
-
-    return function () {
+  makeConstructor: function (context, _super) {
+    return function Deferred () {
       var methods
 
       var _this = _super(function (_resolve, _reject) {
         function fulfill (value) {
-          _state.set(_this, 'fulfilled')
+          context.setPrivate(_this, '#state', 'fulfilled')
           _resolve(value)
         }
         function reject (reason) {
-          _state.set(_this, 'rejected')
+          context.setPrivate(_this, '#state', 'rejected')
           _reject(reason)
         }
         function resolve (value) {
@@ -35,7 +31,7 @@ var Deferred = clazz.defineClass({
             (typeof value === 'object' && value !== null) ||
             typeof value === 'function'
           ) {
-            let then
+            var then
             try {
               then = value.then
             } catch (err) {
@@ -65,28 +61,26 @@ var Deferred = clazz.defineClass({
         } */
       })
 
-      _state.set(_this, 'pending')
-      _methods.set(_this, methods)
+      context.setPrivate(_this, '#state', 'pending')
+      context.setPrivate(_this, '#methods', methods)
 
       return _this
     }
   },
-  methods: function (privateFields) {
-    var _methods = privateFields['#methods']
+  methods: function (context) {
     return {
       resolve: function resolve (value) {
-        _methods.get(this).resolve(value)
+        context.getPrivate(this, '#methods').resolve(value)
       },
       reject: function reject (reason) {
-        _methods.get(this).reject(reason)
+        context.getPrivate(this, '#methods').reject(reason)
       }
     }
   },
-  getters: function (privateFields) {
-    var _state = privateFields['#state']
+  getters: function (context) {
     return {
       state: function () {
-        return _state.get(this)
+        return context.getPrivate(this, '#state')
       }
     }
   },

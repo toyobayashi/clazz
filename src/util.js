@@ -54,6 +54,16 @@ export function defineFunction (name, fn) {
   })
 }
 
+/** @public */
+export function defineField (instance, name, value) {
+  return Object.defineProperty(instance, name, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: value
+  })
+}
+
 export function defineMethod (Class, name, fn) {
   Object.defineProperty(Class.prototype, name, {
     configurable: true,
@@ -149,10 +159,10 @@ export const defineProtoFields = makeDefine(defineProtoField)
 export const defineWritableProtoFields = makeDefine(defineWritableProtoField)
 export const defineStaticFields = makeDefine(defineStaticField)
 
-export function defineMembers (Class, defines, options, key, privates) {
+export function defineMembers (Class, defines, options, key, arg0) {
   let o
   if (typeof options[key] === 'function') {
-    o = options[key](privates)
+    o = options[key](arg0)
   } else {
     o = options[key]
   }
