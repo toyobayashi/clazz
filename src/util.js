@@ -7,6 +7,9 @@ export const canUseReflectConstruct =
   typeof Reflect !== 'undefined' &&
   typeof Reflect.construct === 'function'
 
+export const canUseWeakMap = typeof WeakMap === 'function'
+export const canUseDestructor = typeof FinalizationRegistry === 'function'
+
 export function createSuper (Derived, Base) {
   return canUseReflectConstruct
     ? function () {
@@ -106,7 +109,7 @@ export function defineStaticField (Class, name, value) {
   })
 }
 
-export function defineField (Class, name, value) {
+export function defineProtoField (Class, name, value) {
   Object.defineProperty(Class.prototype, name, {
     configurable: true,
     enumerable: false,
@@ -115,7 +118,7 @@ export function defineField (Class, name, value) {
   })
 }
 
-export function defineWritableField (Class, name, value) {
+export function defineWritableProtoField (Class, name, value) {
   Object.defineProperty(Class.prototype, name, {
     configurable: true,
     enumerable: false,
@@ -127,9 +130,9 @@ export function defineWritableField (Class, name, value) {
 function makeDefine (f) {
   return function (Class, options) {
     options = options || {}
-    let keys = Object.keys(options)
+    const keys = Object.keys(options)
     if (typeof Object.getOwnPropertySymbols === 'function') {
-      keys = [...keys, ...Object.getOwnPropertySymbols(options)]
+      Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(options))
     }
     for (let i = 0; i < keys.length; ++i) {
       const name = keys[i]
@@ -142,14 +145,14 @@ export const defineMethods = makeDefine(defineMethod)
 export const defineStaticMethods = makeDefine(defineStaticMethod)
 export const defineGetters = makeDefine(defineGetter)
 export const defineStaticGetters = makeDefine(defineStaticGetter)
-export const defineFields = makeDefine(defineField)
-export const defineWritableFields = makeDefine(defineWritableField)
+export const defineProtoFields = makeDefine(defineProtoField)
+export const defineWritableProtoFields = makeDefine(defineWritableProtoField)
 export const defineStaticFields = makeDefine(defineStaticField)
 
-export function defineMembers (Class, defines, options, key) {
+export function defineMembers (Class, defines, options, key, privates) {
   let o
   if (typeof options[key] === 'function') {
-    o = options[key](options)
+    o = options[key](privates)
   } else {
     o = options[key]
   }

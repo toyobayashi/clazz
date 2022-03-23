@@ -1,11 +1,22 @@
-var Deferred = clazz.clazz('Deferred').extend(Promise).define({
-  privates: {
-    methods: new WeakMap(),
-    state: new WeakMap()
+var Deferred = clazz.defineClass({
+  name: 'Deferred',
+  extend: Promise,
+  privateFields: [
+    '#methods',
+    '#state'
+  ],
+  destructor: {
+    data: function (instance, privateFields) {
+      return 1
+    },
+    handler: function (data) {
+      console.log(data)
+    }
   },
-  makeConstructor: function (_super) {
-    var _methods = this.privates.methods
-    var _state = this.privates.state
+  makeConstructor: function (context) {
+    var _methods = context.privateFields['#methods']
+    var _state = context.privateFields['#state']
+    var _super = context.superConstruct
 
     return function () {
       var methods
@@ -60,8 +71,8 @@ var Deferred = clazz.clazz('Deferred').extend(Promise).define({
       return _this
     }
   },
-  methods: function () {
-    var _methods = this.privates.methods
+  methods: function (privateFields) {
+    var _methods = privateFields['#methods']
     return {
       resolve: function resolve (value) {
         _methods.get(this).resolve(value)
@@ -71,15 +82,15 @@ var Deferred = clazz.clazz('Deferred').extend(Promise).define({
       }
     }
   },
-  getters: function () {
-    var _state = this.privates.state
+  getters: function (privateFields) {
+    var _state = privateFields['#state']
     return {
       state: function () {
         return _state.get(this)
       }
     }
   },
-  fields: function () {
+  protoFields: function () {
     return {
       [Symbol.toStringTag]: this.name
     }

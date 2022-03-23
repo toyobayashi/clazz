@@ -14,36 +14,94 @@ import {
   defineGetters,
   defineStaticGetters,
   defineStaticFields,
-  defineFields,
-  defineWritableFields,
-  defineMembers
+  defineProtoFields,
+  defineWritableProtoFields,
+  defineMembers,
+  canUseWeakMap,
+  canUseDestructor,
+  isObject
 } from './util'
 
 function noop () {}
+
+function getPrivateFields (options) {
+  if (Array.isArray(options.privateFields)) {
+    if (canUseWeakMap) {
+      const privates = Object.create(null)
+      const keys = options.privateFields
+      for (let i = 0; i < keys.length; ++i) {
+        privates[keys[i]] = new WeakMap()
+      }
+      return privates
+    } else {
+      throw new Error('privateFields option requires WeakMap')
+    }
+  }
+}
+
+function getConstructor (options, superConstruct, privateFields) {
+  let ctor
+  if (typeof options.makeConstructor === 'function') {
+    ctor = options.makeConstructor({
+      privateFields: privateFields,
+      superConstruct
+    })
+    if (typeof ctor !== 'function') {
+      throw new TypeError('makeConstructor should return a constructor function')
+    }
+  } else {
+    ctor = !superConstruct
+      ? noop
+      : function () {
+        return superConstruct.apply(this, arguments)
+      }
+  }
+  return ctor
+}
+
+function getDestructor (options) {
+  let registry
+  let getData
+  const isObjectDestructor = isObject(options.destructor)
+  const isFunctionDestructor = typeof options.destructor === 'function'
+  if (isObjectDestructor || isFunctionDestructor) {
+    if (canUseDestructor) {
+      if (isObjectDestructor) {
+        getData = typeof options.destructor.data === 'function' ? options.destructor.data : noop
+        const destructor = typeof options.destructor.handler === 'function'
+        if (destructor) {
+          registry = new FinalizationRegistry(options.destructor.handler)
+        } else {
+          throw new TypeError('Invalid destructor')
+        }
+      } else {
+        getData = noop
+        registry = new FinalizationRegistry(options.destructor)
+      }
+    } else {
+      console.warn('destructor option requires FinalizationRegistry')
+    }
+  }
+  return {
+    getData,
+    registry
+  }
+}
 
 /** @public */
 export function defineClass (options) {
   const Class = (function (Super) {
     'use strict'
 
-    let _super
+    const privates = getPrivateFields(options)
+
+    let superConstruct
     if (Super) {
-      _super = createSuper(Class, Super)
+      superConstruct = createSuper(Class, Super)
     }
 
-    let ctor
-    if (typeof options.makeConstructor === 'function') {
-      ctor = options.makeConstructor(_super)
-      if (typeof ctor !== 'function') {
-        throw new TypeError('makeConstructor should return a constructor function')
-      }
-    } else {
-      ctor = !_super
-        ? noop
-        : function () {
-          return _super.apply(this, arguments)
-        }
-    }
+    const ctor = getConstructor(options, superConstruct, privates)
+    const { registry, getData } = getDestructor(options)
 
     function Class () {
       if (!(this instanceof Class)) {
@@ -51,6 +109,10 @@ export function defineClass (options) {
       }
 
       const _this = ctor.apply(this, arguments) || this
+
+      if (registry) {
+        registry.register(_this, getData(_this, privates))
+      }
 
       return _this
     }
@@ -61,38 +123,16 @@ export function defineClass (options) {
       initializePrototype(Class)
     }
 
-    defineMembers(Class, defineMethods, options, 'methods')
+    defineMembers(Class, defineMethods, options, 'methods', privates)
     defineMembers(Class, defineStaticMethods, options, 'staticMethods')
-    defineMembers(Class, defineGetters, options, 'getters')
+    defineMembers(Class, defineGetters, options, 'getters', privates)
     defineMembers(Class, defineStaticGetters, options, 'staticGetters')
-    defineMembers(Class, defineFields, options, 'fields')
-    defineMembers(Class, defineWritableFields, options, 'writableFields')
+    defineMembers(Class, defineProtoFields, options, 'protoFields', privates)
+    defineMembers(Class, defineWritableProtoFields, options, 'writableProtoFields', privates)
     defineMembers(Class, defineStaticFields, options, 'staticFields')
 
     return Class
   })(options.extend)
 
   return defineFunction(options.name, Class)
-}
-
-export const Options = defineClass({
-  name: 'Options',
-  makeConstructor () {
-    return function (name) {
-      this.name = name
-    }
-  },
-  methods: {
-    extend (Super) {
-      this.extend = Super
-      return this
-    },
-    define (options) {
-      return defineClass(Object.assign(this, options))
-    }
-  }
-})
-
-export function clazz (name) {
-  return new Options(name)
 }
