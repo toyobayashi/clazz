@@ -17,7 +17,8 @@
     "watch": "tsgo watch",
     "build": "tsgo build",
     "lint": "tsgo lint",
-    "fix": "tsgo fix"
+    "fix": "tsgo fix",
+    "test": "jest"
   },
   "keywords": [],
   "author": "toyobayashi",
@@ -27,6 +28,7 @@
   },
   "devDependencies": {
     "@tybys/tsgo": "^0.16.0",
+    "@types/jest": "^27.4.1",
     "@types/node": "^14.14.41",
     "@typescript-eslint/eslint-plugin": "^5.6.0",
     "@typescript-eslint/parser": "^5.6.0",
@@ -35,7 +37,9 @@
     "eslint-plugin-import": "^2.25.3",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^5.2.0",
+    "jest": "^27.5.1",
     "rollup": "^2.61.0",
-    "typescript": "~4.5.2"
+    "ts-jest": "^27.1.3",
+    "typescript": "~4.5.5"
   }
 }

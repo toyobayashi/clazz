@@ -41,10 +41,14 @@ export interface IContext<T extends Constructor, P extends PrivateOption> {
 }
 
 /** @public */
-export type MethodTree<T extends Constructor> = Record<PropertyKey, (this: InstanceType<T>, ...args: any[]) => any>
+export type MethodTree<T extends Constructor> = {
+  [K in keyof InstanceType<T> as InstanceType<T>[K] extends Function ? K : never]: InstanceType<T>[K]
+}
 
 /** @public */
-export type StaticMethodTree<T extends Constructor> = Record<PropertyKey, (this: T, ...args: any[]) => any>
+export type StaticMethodTree<T extends Constructor> = {
+  [K in keyof T as T[K] extends Function ? K : never]: T[K]
+}
 
 /** @public */
 export type GetterTree<T extends Constructor> = Record<PropertyKey, (this: InstanceType<T>) => any>
@@ -119,7 +123,7 @@ export function defineClass<
   P extends PrivateOption,
   T extends Constructor,
   S extends Constructor = never
-> (options: DefineClassOptions<P, T, S>): T {
+> (options: DefineClassOptions<P, T, S> = {}): T {
   const name = options.name ?? ''
   const Class = (function (Super) {
     'use strict'
