@@ -69,7 +69,14 @@ export function defineFunction (name, fn) {
   })
 }
 
-/** @public */
+/**
+ * @template T
+ * @param {T} instance
+ * @param {PropertyKey} name
+ * @param {any} value
+ * @returns {T}
+ * @public
+ */
 export function defineField (instance, name, value) {
   return Object.defineProperty(instance, name, {
     configurable: true,
