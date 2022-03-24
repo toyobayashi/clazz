@@ -41,8 +41,22 @@ export interface IContext<T extends Constructor, P extends PrivateOption> {
 }
 
 /** @public */
+export type IfEquals<X, Y, A=X, B=never> =
+  (<T>() => T extends X ? 1 : 2) extends
+  (<T>() => T extends Y ? 1 : 2) ? A : B
+
+/* type WritableKeys<T> = {
+  [P in keyof T]-?: IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, P>
+}[keyof T] */
+
+/** @public */
+export type ReadonlyKeys<T> = {
+  [P in keyof T]-?: IfEquals<{ [Q in P]: T[P] }, { -readonly [Q in P]: T[P] }, never, P>
+}[keyof T]
+
+/** @public */
 export type MethodTree<T extends Constructor> = {
-  [K in keyof InstanceType<T> as InstanceType<T>[K] extends Function ? K : never]: InstanceType<T>[K]
+  [K in keyof InstanceType<T> as InstanceType<T>[K] extends Function ? K : never]: (this: InstanceType<T>, ...args: Parameters<InstanceType<T>[K]>) => ReturnType<InstanceType<T>[K]>
 }
 
 /** @public */
@@ -51,10 +65,14 @@ export type StaticMethodTree<T extends Constructor> = {
 }
 
 /** @public */
-export type GetterTree<T extends Constructor> = Record<PropertyKey, (this: InstanceType<T>) => any>
+export type GetterTree<T extends Constructor> = {
+  [P in ReadonlyKeys<InstanceType<T>>]: (this: InstanceType<T>) => InstanceType<T>[P];
+}
 
 /** @public */
-export type StaticGetterTree<T extends Constructor> = Record<PropertyKey, (this: T) => any>
+export type StaticGetterTree<T extends Constructor> = {
+  [P in ReadonlyKeys<T>]: () => T[P];
+}
 
 /** @public */
 export type FieldTree = Record<PropertyKey, any>
