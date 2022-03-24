@@ -20,6 +20,7 @@ import {
   canUseWeakMap,
   canUseDestructor,
   isObject,
+  keys,
   defineField
 } from './util'
 
@@ -35,23 +36,20 @@ function getPrivateFields (options) {
     if (!canUseWeakMap) {
       throw new Error('privateFields option requires WeakMap')
     }
-    let keys
+    let fields
     if (isArr) {
-      keys = options.privateFields
+      fields = options.privateFields
     } else {
-      keys = Object.keys(options.privateFields)
-      if (typeof Object.getOwnPropertySymbols === 'function') {
-        Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(options.privateFields))
-      }
-      for (let i = 0; i < keys.length; ++i) {
-        const key = keys[i]
+      fields = keys(options.privateFields)
+      for (let i = 0; i < fields.length; ++i) {
+        const key = fields[i]
         if (isObject(options.privateFields[key])) {
           throw new TypeError(`Private field ${key} can not be initialized with an object`)
         }
       }
     }
-    for (let i = 0; i < keys.length; ++i) {
-      privates[keys[i]] = new WeakMap()
+    for (let i = 0; i < fields.length; ++i) {
+      privates[fields[i]] = new WeakMap()
     }
   }
   return {
@@ -97,12 +95,9 @@ defineMethods(Context, {
 })
 
 function initPrivateFields (options, context, instance) {
-  const keys = Object.keys(context.privateFields)
-  if (typeof Object.getOwnPropertySymbols === 'function') {
-    Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(context.privateFields))
-  }
-  for (let i = 0; i < keys.length; ++i) {
-    const key = keys[i]
+  const fields = keys(context.privateFields)
+  for (let i = 0; i < fields.length; ++i) {
+    const key = fields[i]
     const valueOrFactory = options.privateFields[key]
     if (typeof valueOrFactory === 'function') {
       context.privateFields[key].set(instance, valueOrFactory())

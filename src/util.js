@@ -2,6 +2,14 @@ export function isObject (o) {
   return typeof o === 'object' && o !== null
 }
 
+export function keys (o) {
+  const result = Object.keys(o)
+  if (typeof Object.getOwnPropertySymbols === 'function') {
+    Array.prototype.push.apply(result, Object.getOwnPropertySymbols(o))
+  }
+  return result
+}
+
 export const canUseReflectConstruct =
   typeof Proxy === 'function' &&
   typeof Reflect !== 'undefined' &&
@@ -147,12 +155,9 @@ export function defineWritableProtoField (Class, name, value) {
 function makeDefine (f) {
   return function (Class, options) {
     options = options || {}
-    const keys = Object.keys(options)
-    if (typeof Object.getOwnPropertySymbols === 'function') {
-      Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(options))
-    }
-    for (let i = 0; i < keys.length; ++i) {
-      const name = keys[i]
+    const k = keys(options)
+    for (let i = 0; i < k.length; ++i) {
+      const name = k[i]
       f(Class, name, options[name])
     }
   }
