@@ -10,10 +10,14 @@ export const canUseReflectConstruct =
 export const canUseWeakMap = typeof WeakMap === 'function'
 export const canUseDestructor = typeof FinalizationRegistry === 'function'
 
-export function createSuper (Derived, Base) {
+export function createSuper (Derived, Base, beforeCreate) {
   return canUseReflectConstruct
     ? function () {
-      return Reflect.construct(Base, arguments, Derived)
+      const _this = Reflect.construct(Base, arguments, Derived)
+      if (beforeCreate) {
+        beforeCreate(_this)
+      }
+      return _this
     }
     : function () {
       const bindArgs = [null]
@@ -21,6 +25,9 @@ export function createSuper (Derived, Base) {
       const BoundBase = Function.prototype.bind.apply(Base, bindArgs)
       const _this = new BoundBase()
       Object.setPrototypeOf(_this, Derived.prototype)
+      if (beforeCreate) {
+        beforeCreate(_this)
+      }
       return _this
     }
 }

@@ -1,10 +1,10 @@
 var Deferred = clazz.defineClass({
   name: 'Deferred',
   extend: Promise,
-  privateFields: [
-    '#methods',
-    '#state'
-  ],
+  privateFields: {
+    '#methods': undefined,
+    '#state': 'pending'
+  },
   destructor: {
     data: function (instance, context) {
       return context
@@ -61,7 +61,6 @@ var Deferred = clazz.defineClass({
         } */
       })
 
-      context.setPrivate(_this, '#state', 'pending')
       context.setPrivate(_this, '#methods', methods)
 
       return _this

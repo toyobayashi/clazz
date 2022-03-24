@@ -15,7 +15,7 @@
       console.log('e instanceof Deferred === ' + (d instanceof Deferred))
       console.log('e instanceof Promise === ' + (d instanceof Promise))
       console.log(d.resolve(1))
-      console.log(d.then(() => {}))
+      console.log(d.then(console.log))
       console.log(Object.prototype.toString.call(d))
     })()
   </script>

@@ -28,17 +28,35 @@ export { defineField }
 function noop () {}
 
 function getPrivateFields (options) {
-  if (Array.isArray(options.privateFields)) {
-    if (canUseWeakMap) {
-      const privates = Object.create(null)
-      const keys = options.privateFields
-      for (let i = 0; i < keys.length; ++i) {
-        privates[keys[i]] = new WeakMap()
-      }
-      return privates
-    } else {
+  const isObj = isObject(options.privateFields)
+  const isArr = Array.isArray(options.privateFields)
+  const privates = Object.create(null)
+  if (isArr || isObj) {
+    if (!canUseWeakMap) {
       throw new Error('privateFields option requires WeakMap')
     }
+    let keys
+    if (isArr) {
+      keys = options.privateFields
+    } else {
+      keys = Object.keys(options.privateFields)
+      if (typeof Object.getOwnPropertySymbols === 'function') {
+        Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(options.privateFields))
+      }
+      for (let i = 0; i < keys.length; ++i) {
+        const key = keys[i]
+        if (isObject(options.privateFields[key])) {
+          throw new TypeError(`Private field ${key} can not be initialized with an object`)
+        }
+      }
+    }
+    for (let i = 0; i < keys.length; ++i) {
+      privates[keys[i]] = new WeakMap()
+    }
+  }
+  return {
+    privates,
+    requireInit: isObj
   }
 }
 
@@ -78,16 +96,33 @@ defineMethods(Context, {
   }
 })
 
-function getConstructor (options, superConstruct, context) {
+function initPrivateFields (options, context, instance) {
+  const keys = Object.keys(context.privateFields)
+  if (typeof Object.getOwnPropertySymbols === 'function') {
+    Array.prototype.push.apply(keys, Object.getOwnPropertySymbols(context.privateFields))
+  }
+  for (let i = 0; i < keys.length; ++i) {
+    const key = keys[i]
+    const valueOrFactory = options.privateFields[key]
+    if (typeof valueOrFactory === 'function') {
+      context.privateFields[key].set(instance, valueOrFactory())
+    } else {
+      context.privateFields[key].set(instance, valueOrFactory)
+    }
+  }
+}
+
+function getConstructor (options, superConstruct, context, beforeCreate) {
   let ctor
   if (typeof options.makeConstructor === 'function') {
-    ctor = options.makeConstructor(context, superConstruct)
-    if (typeof ctor !== 'function') {
+    const userCtor = options.makeConstructor(context, superConstruct)
+    if (typeof userCtor !== 'function') {
       throw new TypeError('makeConstructor should return a constructor function')
     }
+    ctor = userCtor
   } else {
     ctor = !superConstruct
-      ? noop
+      ? (beforeCreate ? function () { beforeCreate(this) } : noop)
       : function () {
         return superConstruct.apply(this, arguments)
       }
@@ -129,15 +164,20 @@ export function defineClass (options) {
   const Class = (function (Super) {
     'use strict'
 
-    const privates = getPrivateFields(options)
+    const { privates, requireInit } = getPrivateFields(options)
     const ctx = new Context(privates)
+    const beforeCreate = requireInit
+      ? function (instance) {
+        initPrivateFields(options, ctx, instance)
+      }
+      : undefined
 
     let superConstruct
     if (Super) {
-      superConstruct = createSuper(Class, Super)
+      superConstruct = createSuper(Class, Super, beforeCreate)
     }
 
-    const ctor = getConstructor(options, superConstruct, ctx)
+    const ctor = getConstructor(options, superConstruct, ctx, beforeCreate)
     const { registry, getData } = getDestructor(options)
 
     function Class () {
