@@ -6,7 +6,7 @@
   "unpkg": "./dist/clazz.js",
   "typings": "./dist/clazz.d.ts",
   "module": "./dist/clazz.esm-bundler.js",
-  "main": "./lib/cjs-modern/index.js",
+  "main": "./index.js",
   "scripts": {
     "prepare": "npm run build",
     "cjs": "tsgo cjs",
